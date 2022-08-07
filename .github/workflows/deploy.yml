@@ -1,155 +1,23 @@
-name: 'integration'
+name: Cloud Storage Uploader
+	jobs:
+		gcloudUpload:
+			permissions:
+				contents: 'read'
+				id-token: 'write'
+			steps:
+			- id: 'auth'
+				uses: 'google-github-actions/auth@v0'
+				with:
+					workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
+					service_account: 'my-service-account@my-project.iam.gserviceaccount.com'
+			 	id: 'upload-file'
+				uses: 'google-github-actions/upload-cloud-storage@v0'
+				with:
+					path: '/path/to/file'
+					destination: 'bucket-name/file'
 
-on:
-  push:
-    branches:
-    - 'main'
-  pull_request:
-    branches:
-    - 'main'
-  workflow_dispatch:
-
-concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
-  cancel-in-progress: true
-
-jobs:
-  auth_json:
-    if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name && github.actor != 'dependabot[bot]' }}
-    name: 'auth_json'
-    runs-on: 'ubuntu-latest'
-    steps:
-    - uses: 'actions/checkout@v3'
-
-    - uses: 'actions/setup-node@v3'
-      with:
-        node-version: '16.x'
-
-    - name: 'npm build'
-      run: 'npm ci && npm run build'
-
-    - uses: 'google-github-actions/auth@main'
-      with:
-        credentials_json: '${{ secrets.UPLOAD_CLOUD_STORAGE_GCP_SA_KEY_JSON }}'
-
-    - name: 'Create files'
-      run: |-
-        mkdir -p test
-        touch test/test2.txt
-
-    - id: 'upload'
-      name: 'Upload files'
-      uses: './'
-      with:
-        path: './test/test2.txt'
-        destination: '${{ secrets.UPLOAD_CLOUD_STORAGE_TEST_BUCKET }}/testprefix'
-
-    - name: 'Get output'
-      run: 'echo "${{ steps.upload.outputs.uploaded }}"'
-
-  auth_workload_identity_federation:
-    if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name && github.actor != 'dependabot[bot]' }}
-    name: 'auth_workload_identity_federation'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    runs-on: 'ubuntu-latest'
-    steps:
-    - uses: 'actions/checkout@v3'
-
-    - uses: 'actions/setup-node@v3'
-      with:
-        node-version: '16.x'
-
-    - name: 'npm build'
-      run: 'npm ci && npm run build'
-
-    - uses: 'google-github-actions/auth@main'
-      with:
-        workload_identity_provider: '${{ secrets.WIF_PROVIDER_NAME }}'
-        service_account: '${{ secrets.UPLOAD_CLOUD_STORAGE_GCP_SA_EMAIL }}'
-
-    - name: 'Create files'
-      run: |-
-        mkdir -p test
-        touch test/test1.txt
-        touch test/test2.txt
-
-    - id: 'upload'
-      name: 'Upload files'
-      uses: './'
-      with:
-        path: './test'
-        destination: '${{ secrets.UPLOAD_CLOUD_STORAGE_TEST_BUCKET }}/testprefix'
-        credentials: '${{ secrets.UPLOAD_CLOUD_STORAGE_GCP_SA_KEY_JSON }}'
-
-    - name: 'Get output'
-      run: 'echo "${{ steps.upload.outputs.uploaded }}"'
-
-  # Deprecated
-  auth_setup_gcloud:
-    if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name && github.actor != 'dependabot[bot]' }}
-    name: 'auth_setup_gcloud'
-    runs-on: 'ubuntu-latest'
-    steps:
-    - uses: 'actions/checkout@v3'
-
-    - uses: 'actions/setup-node@v3'
-      with:
-        node-version: '16.x'
-
-    - name: 'npm build'
-      run: 'npm ci && npm run build'
-
-    - uses: 'google-github-actions/setup-gcloud@main'
-      with:
-        service_account_email: ${{ secrets.UPLOAD_CLOUD_STORAGE_GCP_SA_EMAIL }}
-        service_account_key: ${{ secrets.UPLOAD_CLOUD_STORAGE_GCP_SA_KEY_B64 }}
-        export_default_credentials: true
-
-    - name: 'Create files'
-      run: |-
-        mkdir -p test
-        touch test/test2.txt
-
-    - id: 'upload'
-      name: 'Upload files'
-      uses: './'
-      with:
-        path: './test/test2.txt'
-        destination: '${{ secrets.UPLOAD_CLOUD_STORAGE_TEST_BUCKET }}/testprefix'
-
-    - name: 'Get output'
-      run: 'echo "${{ steps.upload.outputs.uploaded }}"'
-
-  # Deprecated
-  auth_builtin_credentials:
-    if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name && github.actor != 'dependabot[bot]' }}
-    name: 'auth_builtin_credentials'
-    runs-on: 'ubuntu-latest'
-    steps:
-    - uses: 'actions/checkout@v3'
-
-    - uses: 'actions/setup-node@v3'
-      with:
-        node-version: '16.x'
-
-    - name: 'npm build'
-      run: 'npm ci && npm run build'
-
-    - name: 'Create files'
-      run: |-
-        mkdir -p test
-        touch test/test1.txt
-        touch test/test2.txt
-
-    - id: 'upload'
-      name: 'Upload files'
-      uses: './'
-      with:
-        path: './test'
-        destination: '${{ secrets.UPLOAD_CLOUD_STORAGE_TEST_BUCKET }}/testprefix'
-        credentials: '${{ secrets.UPLOAD_CLOUD_STORAGE_GCP_SA_KEY_JSON }}'
-
-    - name: 'Get output'
-      run: 'echo "${{ steps.upload.outputs.uploaded }}"'
+			# Example of using the output
+			- id: 'uploaded-files'
+				uses: 'foo/bar@main'
+				env:
+					file: '${{ steps.upload-file.outputs.uploaded }}'
